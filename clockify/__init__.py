@@ -13,11 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
-import json
 import random
 import requests as rqs
 
 class _App():
+    # pylint: disable=too-many-instance-attributes
+    # pylint: disable=missing-docstring
     def __init__(self, api_key):
         self._api_key = api_key
         self.endpoint = 'https://api.clockify.me/api'
@@ -47,19 +48,27 @@ class _App():
         elif self.method.lower() == 'post':
             response = rqs.post(self.uri, json=self.body, headers=self.headers)
         else:
-            raise NotImplemented
-        response.raise_for_status()            
+            raise NotImplementedError
+        response.raise_for_status()
         return response.json()
 
+def _get_color():
+    'Gen color code'
+    ranfn = lambda: random.randint(0, 255)
+    return '#%02X%02X%02X' % (ranfn(), ranfn(), ranfn())
 
 class Clockify():
+    '''
+    Main app to implement Clockify methods
+    '''
+    # pylint: disable=no-self-argument
     api_key = ''
 
-    def get_color():
-        r = lambda: random.randint(0,255)
-        return '#%02X%02X%02X' % (r(),r(),r())
-
     def create_project(name, workspace_id, client_id, user_id):
+        '''
+        Create project:
+           create_project(name, workspace_id, client_id, user_id)
+        '''
         app = _App(Clockify.api_key)
         app.method = 'post'
         app.path = f'/workspaces/{workspace_id}/projects'
@@ -68,25 +77,34 @@ class Clockify():
             "clientId": client_id,
             "isPublic": False,
             "billable": True,
-            "color" : Clockify.get_color(),
-            "memberships": [ {
+            "color" : _get_color(),
+            "memberships": [{
                 "userId": user_id,
                 "membershipStatus" : "ACTIVE",
-                "membershipType" : "PROJECT" }]}
+                "membershipType" : "PROJECT"}]}
         return app.execute()
 
-    def close_project(workspace_id, project_id):
+    def archive_project(workspace_id, project_id):
+        '''
+        Archive existing project
+        args: workspaceId
+              projectId
+        '''
         app = _App(Clockify.api_key)
         app.working_endpoint = True
-        # add a time delay
         app.path = f'/workspaces/{workspace_id}/projects/{project_id}/archive'
-        result = app.execute()
+        return app.execute()
 
     def reopen_project(workspace_id, project_id):
+        '''
+        Re-Open existing project
+        args: workspaceId
+              projectId
+        '''
         app = _App(Clockify.api_key)
         app.working_endpoint = True
         app.path = f'/workspaces/{workspace_id}/projects/{project_id}/restore'
-        result = app.execute()
+        return app.execute()
 
     def create_user():
         raise NotImplementedError
