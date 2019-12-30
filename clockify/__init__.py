@@ -47,6 +47,8 @@ class _App():
             response = rqs.put(self.uri, data=self.body, params=self.parmas, headers=self.headers)
         elif self.method.lower() == 'post':
             response = rqs.post(self.uri, json=self.body, headers=self.headers)
+        elif self.method.lower() == 'delete':
+            response = rqs.delete(self.uri, params=self.parmas, headers=self.headers)
         else:
             raise NotImplementedError
         response.raise_for_status()
@@ -105,6 +107,40 @@ class Clockify():
         app.working_endpoint = True
         app.path = f'/workspaces/{workspace_id}/projects/{project_id}/restore'
         return app.execute()
+
+    def get_project_users(workspace_id, project_id):
+        '''
+        Get all project users
+        '''
+        app = _App(Clockify.api_key)
+        app.working_endpoint = True
+        app.path = f'/workspaces/{workspace_id}/projects/{project_id}/users'
+        return app.execute()
+
+
+    def add_project_member(workspace_id, project_id, user_id):
+        '''
+        Add member to project
+        '''
+        app = _App(Clockify.api_key)
+        app.method = 'post'
+        app.working_endpoint = True
+        app.path = f'/workspaces/{workspace_id}/projects/{project_id}/team'
+        app.body = {
+            "userIds": [user_id],
+            "userGroupIds": []}
+        return app.execute()
+
+    def remove_project_member(workspace_id, project_id, user_id):
+        '''
+        Remove member from project
+        '''
+        app = _App(Clockify.api_key)
+        app.method = 'delete'
+        app.working_endpoint = True
+        app.path = f'/workspaces/{workspace_id}/projects/{project_id}/users/{user_id}/membership'
+        return app.execute()
+
 
     def create_user():
         raise NotImplementedError
