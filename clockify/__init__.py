@@ -95,7 +95,7 @@ class Clockify():
         app.path = f'/workspaces/{workspace_id}/projects/{project_id}/archive'
         return app.execute()
 
-    def reopen_project(workspace_id, project_id):
+    def restore_project(workspace_id, project_id):
         '''
         Re-Open existing project
         args: workspaceId
