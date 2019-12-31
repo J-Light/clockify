@@ -44,7 +44,7 @@ class _App():
         if self.method.lower() == 'get':
             response = rqs.get(self.uri, params=self.parmas, headers=self.headers)
         elif self.method.lower() == 'put':
-            response = rqs.put(self.uri, data=self.body, params=self.parmas, headers=self.headers)
+            response = rqs.put(self.uri, json=self.body, params=self.parmas, headers=self.headers)
         elif self.method.lower() == 'post':
             response = rqs.post(self.uri, json=self.body, headers=self.headers)
         elif self.method.lower() == 'delete':
@@ -84,6 +84,17 @@ class Clockify():
                 "userId": user_id,
                 "membershipStatus" : "ACTIVE",
                 "membershipType" : "PROJECT"}]}
+        return app.execute()
+
+    def get_project(workspace_id, project_id):
+        '''
+        Get an existing project
+        args: workspaceId
+              projectId
+        '''
+        app = _App(Clockify.api_key)
+        app.working_endpoint = True
+        app.path = f'/workspaces/{workspace_id}/projects/{project_id}'
         return app.execute()
 
     def archive_project(workspace_id, project_id):
@@ -139,6 +150,26 @@ class Clockify():
         app.method = 'delete'
         app.working_endpoint = True
         app.path = f'/workspaces/{workspace_id}/projects/{project_id}/users/{user_id}/membership'
+        return app.execute()
+
+    def update_project_name(new_name, workspace_id, project_id):
+        '''
+        Update a projects name'
+        '''
+        proj = Clockify.get_project(workspace_id, project_id)
+        app = _App(Clockify.api_key)
+        app.working_endpoint = True
+        app.method = 'put'
+        app.path = f'/workspaces/{workspace_id}/projects/{project_id}'
+        app.body = {
+            "id": proj['id'],
+            "name": new_name,
+            "hourlyRate": proj['hourlyRate'],
+            "clientId": proj['clientId'],
+            "billable": proj['billable'],
+            "color": proj['color'],
+            "estimate": proj['estimate'],
+            "isPublic":proj['public']}
         return app.execute()
 
 
