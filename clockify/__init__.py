@@ -13,8 +13,12 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 '''
+import logging
 import random
 import requests as rqs
+
+LOG = logging.getLogger('clockify')
+LOG.setLevel(logging.DEBUG)
 
 class _App():
     # pylint: disable=too-many-instance-attributes
@@ -51,7 +55,11 @@ class _App():
             response = rqs.delete(self.uri, params=self.parmas, headers=self.headers)
         else:
             raise NotImplementedError
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except Exception as ex:
+            LOG.error('Failed with error: %s', response.text)
+            raise ex
         return response.json()
 
 def _get_color():
@@ -172,9 +180,47 @@ class Clockify():
             "isPublic":proj['public']}
         return app.execute()
 
+    def get_users(workspace_id):
+        '''
+        Get all users on workspace
+        '''
+        app = _App(Clockify.api_key)
+        app.path = f'/workspaces/{workspace_id}/users'
 
-    def create_user():
-        raise NotImplementedError
+        app.parmas
+        page = 1
+        users = []
+        while True:
+            app.parmas = {'page' : page}
+            resp = app.execute()
+            if not resp:
+                break
+            users.extend(resp)
+            page = page + 1
+        return users
 
-    def create_client():
-        raise NotImplementedError
+    def get_client(name, workspace_id):
+        '''
+        Find a client by name
+        '''
+        app = _App(Clockify.api_key)
+        app.path = f'/workspaces/{workspace_id}/clients'
+        app.parmas = {
+            'name' : name
+        }
+        clients = app.execute()
+        for client in clients:
+            if client['name'] == name:
+                return client       
+
+    def create_client(name, workspace_id):
+        '''
+        Create a new Client
+        '''
+        app = _App(Clockify.api_key)
+        app.method = 'post'
+        app.path = f'/workspaces/{workspace_id}/clients'
+        app.body = {
+            'name' : name
+        }
+        return app.execute()
