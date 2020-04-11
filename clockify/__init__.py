@@ -18,7 +18,13 @@ import random
 import requests as rqs
 
 LOG = logging.getLogger('clockify')
-LOG.setLevel(logging.DEBUG)
+
+
+class ClockifyUserExistError(Exception):
+    "User does not exist"
+    def __init__(self):
+        super().__init__()
+        self.message = 'User does not exist'
 
 class _App():
     # pylint: disable=too-many-instance-attributes
@@ -74,10 +80,10 @@ class Clockify():
     # pylint: disable=no-self-argument
     api_key = ''
 
-    def create_project(name, workspace_id, client_id, user_id):
+    def create_project(name, workspace_id, client_id, user_ids):
         '''
         Create project:
-           create_project(name, workspace_id, client_id, user_id)
+           create_project(name, workspace_id, client_id, user_ids)
         '''
         app = _App(Clockify.api_key)
         app.method = 'post'
@@ -88,10 +94,15 @@ class Clockify():
             "isPublic": False,
             "billable": True,
             "color" : _get_color(),
-            "memberships": [{
-                "userId": user_id,
-                "membershipStatus" : "ACTIVE",
-                "membershipType" : "PROJECT"}]}
+            "memberships": [
+                {
+                    "userId": user_id,
+                    "membershipStatus" : "ACTIVE",
+                    "membershipType" : "PROJECT"
+                }
+                for user_id in user_ids
+            ]
+        }
         return app.execute()
 
     def get_project(workspace_id, project_id):
@@ -187,7 +198,6 @@ class Clockify():
         app = _App(Clockify.api_key)
         app.path = f'/workspaces/{workspace_id}/users'
 
-        app.parmas
         page = 1
         users = []
         while True:
@@ -198,6 +208,22 @@ class Clockify():
             users.extend(resp)
             page = page + 1
         return users
+
+    def get_user(workspace_id, email_id):
+        '''
+        Get users on workspace with email_id
+        '''
+        app = _App(Clockify.api_key)
+        app.path = f'/workspaces/{workspace_id}/users'
+
+        app.parmas = {
+            'email' : email_id,
+            'memberships': 'NONE'
+            }
+        resp = app.execute()
+        if not resp:
+            raise ClockifyUserExistError
+        return resp[0]
 
     def get_client(name, workspace_id):
         '''
