@@ -112,7 +112,6 @@ class Clockify():
               projectId
         '''
         app = _App(Clockify.api_key)
-        app.working_endpoint = True
         app.path = f'/workspaces/{workspace_id}/projects/{project_id}'
         return app.execute()
 
@@ -122,9 +121,16 @@ class Clockify():
         args: workspaceId
               projectId
         '''
+        proj = Clockify.get_project(workspace_id, project_id)
         app = _App(Clockify.api_key)
-        app.working_endpoint = True
-        app.path = f'/workspaces/{workspace_id}/projects/{project_id}/archive'
+        app.path = f'/workspaces/{workspace_id}/projects/{project_id}'
+        app.method = 'put'
+        app.body = {
+            "id": proj['id'],
+            "name": proj['name'],
+            "color": proj['color'],
+            "archived": True
+        }
         return app.execute()
 
     def restore_project(workspace_id, project_id):
