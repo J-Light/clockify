@@ -176,6 +176,15 @@ class Clockify():
         result = app.execute()
         return [x['userId'] for x in result['memberships']]
 
+    def add_project_member(workspace_id, project_id, user_id):
+        '''
+        Append user to project
+        '''
+        members = Clockify.get_project_members(workspace_id, project_id)
+        members.append(user_id)
+        user_ids = list(set(members))
+        return Clockify.set_project_members(workspace_id, project_id, user_ids)
+
     def set_project_members(workspace_id, project_id, user_ids):
         '''
         Set projects members
