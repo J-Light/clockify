@@ -26,13 +26,20 @@ class ClockifyUserExistError(Exception):
         super().__init__()
         self.message = 'User does not exist'
 
+
+class ClockifyClientExistError(Exception):
+    "Client does not exist"
+    def __init__(self):
+        super().__init__()
+        self.message = 'Client does not exist'
+
+
 class _App():
     # pylint: disable=too-many-instance-attributes
     # pylint: disable=missing-docstring
     def __init__(self, api_key):
         self._api_key = api_key
-        self.endpoint = 'https://api.clockify.me/api'
-        self.v1_endpoint = 'https://api.clockify.me/api/v1'
+        self.endpoint = 'https://api.clockify.me/api/v1'
         self.working_endpoint = False
         self.path = '/'
         self.parmas = {}
@@ -41,24 +48,39 @@ class _App():
 
     @property
     def uri(self):
-        endpoint = self.endpoint if self.working_endpoint else self.v1_endpoint
-        return ''.join([endpoint, self.path])
+        return ''.join([self.endpoint, self.path])
 
     @property
     def headers(self):
         return {
-            'X-Api-Key' : self._api_key
+            'X-Api-Key': self._api_key
             }
 
     def execute(self):
         if self.method.lower() == 'get':
-            response = rqs.get(self.uri, params=self.parmas, headers=self.headers)
+            response = rqs.get(
+                self.uri,
+                params=self.parmas,
+                headers=self.headers)
         elif self.method.lower() == 'put':
-            response = rqs.put(self.uri, json=self.body, params=self.parmas, headers=self.headers)
+            response = rqs.put(
+                self.uri,
+                json=self.body,
+                params=self.parmas,
+                headers=self.headers)
         elif self.method.lower() == 'post':
             response = rqs.post(self.uri, json=self.body, headers=self.headers)
         elif self.method.lower() == 'delete':
-            response = rqs.delete(self.uri, params=self.parmas, headers=self.headers)
+            response = rqs.delete(
+                self.uri,
+                params=self.parmas,
+                headers=self.headers)
+        elif self.method.lower() == 'patch':
+            response = rqs.patch(
+                self.uri,
+                json=self.body,
+                params=self.parmas,
+                headers=self.headers)
         else:
             raise NotImplementedError
         try:
@@ -68,10 +90,12 @@ class _App():
             raise ex
         return response.json()
 
+
 def _get_color():
     'Gen color code'
-    ranfn = lambda: random.randint(0, 255)
-    return '#%02X%02X%02X' % (ranfn(), ranfn(), ranfn())
+    idx = random.randint(0, len(COLORS))
+    return '#%02X%02X%02X' % COLORS[idx]
+
 
 class Clockify():
     '''
@@ -93,12 +117,12 @@ class Clockify():
             "clientId": client_id,
             "isPublic": False,
             "billable": True,
-            "color" : _get_color(),
+            "color": _get_color(),
             "memberships": [
                 {
                     "userId": user_id,
-                    "membershipStatus" : "ACTIVE",
-                    "membershipType" : "PROJECT"
+                    "membershipStatus": "ACTIVE",
+                    "membershipType": "PROJECT"
                 }
                 for user_id in user_ids
             ]
@@ -121,14 +145,10 @@ class Clockify():
         args: workspaceId
               projectId
         '''
-        proj = Clockify.get_project(workspace_id, project_id)
         app = _App(Clockify.api_key)
         app.path = f'/workspaces/{workspace_id}/projects/{project_id}'
         app.method = 'put'
         app.body = {
-            "id": proj['id'],
-            "name": proj['name'],
-            "color": proj['color'],
             "archived": True
         }
         return app.execute()
@@ -140,61 +160,49 @@ class Clockify():
               projectId
         '''
         app = _App(Clockify.api_key)
-        app.working_endpoint = True
-        app.path = f'/workspaces/{workspace_id}/projects/{project_id}/restore'
+        app.path = f'/workspaces/{workspace_id}/projects/{project_id}'
+        app.method = 'put'
+        app.body = {
+            "archived": False
+        }
         return app.execute()
 
-    def get_project_users(workspace_id, project_id):
+    def get_project_members(workspace_id, project_id):
         '''
         Get all project users
         '''
         app = _App(Clockify.api_key)
-        app.working_endpoint = True
-        app.path = f'/workspaces/{workspace_id}/projects/{project_id}/users'
-        return app.execute()
+        app.path = f'/workspaces/{workspace_id}/projects/{project_id}'
+        result = app.execute()
+        return [x['userId'] for x in result['memberships']]
 
-
-    def add_project_member(workspace_id, project_id, user_id):
+    def set_project_members(workspace_id, project_id, user_ids):
         '''
-        Add member to project
+        Set projects members
         '''
         app = _App(Clockify.api_key)
-        app.method = 'post'
-        app.working_endpoint = True
-        app.path = f'/workspaces/{workspace_id}/projects/{project_id}/team'
+        app.method = 'patch'
+        app.path = (f'/workspaces/{workspace_id}'
+                    f'/projects/{project_id}/memberships')
         app.body = {
-            "userIds": [user_id],
-            "userGroupIds": []}
-        return app.execute()
-
-    def remove_project_member(workspace_id, project_id, user_id):
-        '''
-        Remove member from project
-        '''
-        app = _App(Clockify.api_key)
-        app.method = 'delete'
-        app.working_endpoint = True
-        app.path = f'/workspaces/{workspace_id}/projects/{project_id}/users/{user_id}/membership'
+            "memberships": [
+                {
+                    "userId": user_id
+                }
+                for user_id in user_ids]
+            }
         return app.execute()
 
     def update_project_name(new_name, workspace_id, project_id):
         '''
         Update a projects name'
         '''
-        proj = Clockify.get_project(workspace_id, project_id)
         app = _App(Clockify.api_key)
-        app.working_endpoint = True
         app.method = 'put'
         app.path = f'/workspaces/{workspace_id}/projects/{project_id}'
         app.body = {
-            "id": proj['id'],
-            "name": new_name,
-            "hourlyRate": proj['hourlyRate'],
-            "clientId": proj['clientId'],
-            "billable": proj['billable'],
-            "color": proj['color'],
-            "estimate": proj['estimate'],
-            "isPublic":proj['public']}
+            "name": new_name
+        }
         return app.execute()
 
     def get_users(workspace_id):
@@ -207,7 +215,7 @@ class Clockify():
         page = 1
         users = []
         while True:
-            app.parmas = {'page' : page}
+            app.parmas = {'page': page}
             resp = app.execute()
             if not resp:
                 break
@@ -223,7 +231,7 @@ class Clockify():
         app.path = f'/workspaces/{workspace_id}/users'
 
         app.parmas = {
-            'email' : email_id,
+            'email': email_id,
             'memberships': 'NONE'
             }
         resp = app.execute()
@@ -238,12 +246,13 @@ class Clockify():
         app = _App(Clockify.api_key)
         app.path = f'/workspaces/{workspace_id}/clients'
         app.parmas = {
-            'name' : name
+            'name': name
         }
         clients = app.execute()
         for client in clients:
             if client['name'] == name:
-                return client       
+                return client
+        raise ClockifyClientExistError
 
     def create_client(name, workspace_id):
         '''
@@ -253,6 +262,75 @@ class Clockify():
         app.method = 'post'
         app.path = f'/workspaces/{workspace_id}/clients'
         app.body = {
-            'name' : name
+            'name': name
         }
         return app.execute()
+
+
+COLORS = [
+    (0, 255, 0),
+    (255, 0, 255),
+    (0, 128, 255),
+    (255, 128, 0),
+    (125, 43, 134),
+    (255, 0, 0),
+    (7, 0, 245),
+    (0, 128, 0),
+    (0, 128, 128),
+    (138, 89, 5),
+    (0, 0, 128),
+    (139, 93, 247),
+    (135, 188, 1),
+    (253, 55, 127),
+    (9, 228, 110),
+    (128, 0, 255),
+    (128, 0, 0),
+    (191, 124, 97),
+    (48, 58, 63),
+    (48, 81, 187),
+    (59, 167, 63),
+    (200, 3, 171),
+    (5, 186, 197),
+    (184, 29, 64),
+    (102, 110, 93),
+    (187, 81, 177),
+    (103, 135, 173),
+    (237, 69, 250),
+    (73, 11, 189),
+    (237, 60, 16),
+    (23, 197, 10),
+    (186, 141, 21),
+    (49, 182, 136),
+    (37, 56, 250),
+    (79, 4, 91),
+    (10, 60, 1),
+    (251, 2, 88),
+    (3, 63, 126),
+    (0, 107, 62),
+    (81, 126, 4),
+    (2, 31, 180),
+    (180, 40, 246),
+    (29, 134, 199),
+    (144, 154, 71),
+    (118, 42, 60),
+    (70, 114, 241),
+    (13, 12, 65),
+    (79, 47, 6),
+    (100, 51, 224),
+    (196, 73, 110),
+    (253, 103, 66),
+    (141, 13, 185),
+    (193, 0, 7),
+    (125, 88, 169),
+    (187, 87, 47),
+    (74, 72, 125),
+    (33, 172, 247),
+    (251, 44, 192),
+    (165, 0, 123),
+    (96, 153, 110),
+    (61, 4, 8),
+    (2, 182, 89),
+    (71, 10, 243),
+    (167, 44, 1),
+    (3, 159, 37),
+    (57, 211, 81)]
