@@ -54,7 +54,7 @@ class _App():
     def headers(self):
         return {
             'X-Api-Key': self._api_key
-            }
+        }
 
     def execute(self):
         if self.method.lower() == 'get':
@@ -199,7 +199,7 @@ class Clockify():
                     "userId": user_id
                 }
                 for user_id in user_ids]
-            }
+        }
         return app.execute()
 
     def update_project_name(new_name, workspace_id, project_id):
@@ -242,7 +242,7 @@ class Clockify():
         app.parmas = {
             'email': email_id,
             'memberships': 'NONE'
-            }
+        }
         resp = app.execute()
         if not resp:
             raise ClockifyUserExistError
