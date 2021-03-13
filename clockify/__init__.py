@@ -214,6 +214,18 @@ class Clockify():
         }
         return app.execute()
 
+    def update_project_client(new_client_id, workspace_id, project_id):
+        '''
+        Update a project's client
+        '''
+        app = _App(Clockify.api_key)
+        app.method = 'put'
+        app.path = f'/workspaces/{workspace_id}/projects/{project_id}'
+        app.body = {
+            "clientId": new_client_id
+        }
+        return app.execute()
+
     def get_users(workspace_id):
         '''
         Get all users on workspace
